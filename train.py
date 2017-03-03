@@ -5,8 +5,14 @@ from timer import timer
 from classifier import LDAClassifier, QDAClassifier
 
 
-timer.start("reading data from matlab file")
-raw = loadmat(path.join(path.dirname(__file__), "data", "features.mat"))
+""" TODO: choose either mnist or spam >>HERE<< """
+which = "spam.mat"
+which = "mnist.mat"
+""" TODO: choose either mnist or spam >>HERE<< """
+
+
+timer.start("reading", which, "data from matlab file")
+raw = loadmat(path.join(path.dirname(__file__), "data", which))
 raw_data = raw['data']
 raw_labl = raw['label'][0]
 timer.end("done")
@@ -56,7 +62,7 @@ def cross_validation(method, k=5):
         print ".... validation accuracy computation done"
         timer.end("done; training accuracy =", train_rate[j], "; validation accuracy =", valid_rate[j])
 
-    print k, "fold cross validation for", method, "complete"
+    print k, "fold cross validation for", method, "on dataset", which, "complete"
     print ".... overall training accuracy   =", np.mean(train_rate)
     print ".... overall validation accuracy =", np.mean(valid_rate)
 

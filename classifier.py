@@ -2,12 +2,13 @@ import numpy as np
 import numpy.linalg as la
 
 
-def gaussian_estimate(data, label):
+def gaussian_estimate(data, label, alpha):
     assert len(data) == len(label), "label length mismatch"
     assert label.min() == 0, "label should start from 0"
     assert label.max() != 0, "label should have multiple"
     trim = np.sum(data, axis=0) > 0
     data = data[:, trim]
+    dimension = len(data[0])
     classified = [list() for _ in range(label.max() + 1)]
     for i in range(len(label)):
         classified[label[i]].append(data[i])
@@ -15,15 +16,14 @@ def gaussian_estimate(data, label):
         classified[i] = np.array(classified[i])
     log_priors = np.array([np.log(1.0 * len(classified[i]) / len(label)) for i in range(len(classified))])
     means = np.array([np.mean(points, axis=0) for points in classified])
-    variances = np.array([np.cov(np.transpose(points)) for points in classified])
-    return log_priors, means, variances, trim
+    variances = np.array([np.cov(np.transpose(points)) + alpha * np.eye(dimension) for points in classified])
+    return log_priors, means, variances, trim, dimension
 
 
 class GaussianClassifier:
-    def __init__(self, data, label):
-        self.log_priors, self.means, self.variances, self.trim = gaussian_estimate(data, label)
+    def __init__(self, data, label, alpha):
+        self.log_priors, self.means, self.variances, self.trim, self.d = gaussian_estimate(data, label, alpha)
         self.num_classes = len(self.log_priors)
-        self.m, self.d = data.shape
 
     def classify(self, point):
         raise Exception("unimplemented")
@@ -39,8 +39,8 @@ class GaussianClassifier:
 class LDAClassifier(GaussianClassifier):
 
     def __init__(self, data, label, alpha=1e-6):
-        GaussianClassifier.__init__(self, data, label)
-        self.variance = np.sum(self.variances, axis=0) + alpha * np.eye(self.d)
+        GaussianClassifier.__init__(self, data, label, alpha)
+        self.variance = np.sum(self.variances, axis=0)
         del self.variances
         self.precisions = np.ndarray(shape=(self.num_classes, self.d), dtype=self.variance.dtype)
         for i in range(self.num_classes):
@@ -58,8 +58,8 @@ class LDAClassifier(GaussianClassifier):
 
 class QDAClassifier(GaussianClassifier):
 
-    def __init__(self, data, label):
-        GaussianClassifier.__init__(self, data, label)
+    def __init__(self, data, label, alpha=1e-6):
+        GaussianClassifier.__init__(self, data, label, alpha)
         self.log_determinants = np.ndarray(shape=self.num_classes, dtype=np.float)
         for i in range(self.num_classes):
             s, logdet = la.slogdet(self.variances[i])
