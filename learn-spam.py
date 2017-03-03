@@ -2,7 +2,7 @@ import numpy as np
 from os import path
 from scipy.io import loadmat
 from timer import timer
-from classifier import LDAClassifier
+from classifier import LDAClassifier, QDAClassifier
 
 
 timer.start("reading data from matlab file")
@@ -23,7 +23,14 @@ del raw, raw_data, raw_labl, ordering
 timer.end("done")
 
 
-def cross_validation(k=5):
+def cross_validation(method, k=5):
+    if method == "lda":
+        Classifier = LDAClassifier
+    elif method == "qda":
+        Classifier = QDAClassifier
+    else:
+        raise Exception("lda or qda only")
+
     timer.start("folding data into", k, "copies")
     data_slice = [ None ] * k
     labl_slice = [ None ] * k
@@ -49,11 +56,9 @@ def cross_validation(k=5):
         print ".... validation accuracy computation done"
         timer.end("done; training accuracy =", train_rate[j], "; validation accuracy =", valid_rate[j])
 
-    train_accuracy = np.mean(train_rate)
-    valid_accuracy = np.mean(valid_rate)
-    print k, "fold cross validation complete"
-    print ".... overall training accuracy   =", train_accuracy
-    print ".... overall validation accuracy =", valid_accuracy
+    print k, "fold cross validation for", method, "complete"
+    print ".... overall training accuracy   =", np.mean(train_rate)
+    print ".... overall validation accuracy =", np.mean(valid_rate)
 
 
-cross_validation()
+cross_validation("qda")

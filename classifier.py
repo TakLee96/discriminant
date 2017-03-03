@@ -56,20 +56,26 @@ class LDAClassifier(GaussianClassifier):
         return np.argmax(discriminant)
 
 
-# class QDAClassifier(Classifier):
-#     def __init__(self, data, label):
-#         Classifier.__init__(self, data, label)
-#         self.precisions = np.array([la.pinv(self.variances[i]) for i in range(self.num_classes)])
-#         self.log_determinants = np.array([la.slogdet(self.variances[i])[1] for i in range(self.num_classes)])
-#         self.variances = None
-#
-#     def classify(self, point):
-#         discriminant = np.ndarray(shape=(self.num_classes,), dtype=float)
-#         for i in range(self.num_classes):
-#             normalized = point - self.means[i]
-#             discriminant[i] = self.log_priors[i] - self.log_determinants[i] / 2 \
-#                               - np.dot(np.dot(normalized, self.precisions[i]), normalized) / 2
-#         return np.argmax(discriminant)
+class QDAClassifier(GaussianClassifier):
+
+    def __init__(self, data, label):
+        GaussianClassifier.__init__(self, data, label)
+        self.log_determinants = np.ndarray(shape=self.num_classes, dtype=np.float)
+        for i in range(self.num_classes):
+            s, logdet = la.slogdet(self.variances[i])
+            if s == 0:
+                raise Exception("singular matrix")
+            self.log_determinants[i] = logdet
+        self.precisions = np.array([la.inv(self.variances[i]) for i in range(self.num_classes)])
+        del self.variances
+
+    def classify(self, point):
+        discriminant = np.ndarray(shape=(self.num_classes,), dtype=float)
+        for i in range(self.num_classes):
+            normalized = point - self.means[i]
+            discriminant[i] = self.log_priors[i] - self.log_determinants[i] / 2 \
+                              - np.dot(np.dot(normalized, self.precisions[i]), normalized) / 2
+        return np.argmax(discriminant)
 
 
-__all__ = [gaussian_estimate, LDAClassifier]
+__all__ = [gaussian_estimate, LDAClassifier, QDAClassifier]
