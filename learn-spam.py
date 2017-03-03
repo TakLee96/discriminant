@@ -1,30 +1,59 @@
 import numpy as np
 from os import path
-from pickle import load, dump
-from scipy.io import loadmat, savemat
-from classifier import classify
+from scipy.io import loadmat
+from timer import timer
+from classifier import LDAClassifier
 
 
-raw = loadmat(path.join(path.dirname(__file__), "features.mat"))
+timer.start("reading data from matlab file")
+raw = loadmat(path.join(path.dirname(__file__), "data", "features.mat"))
 raw_data = raw['data']
-raw_label = raw['label'][0]
+raw_labl = raw['label'][0]
+timer.end("done")
+
+timer.start("permuting data randomly")
 np.random.seed(0)
 ordering = np.random.permutation(len(raw_data))
 data = np.ndarray(shape=raw_data.shape, dtype=raw_data.dtype)
-label = np.ndarray(shape=raw_label.shape, dtype=raw_label.dtype)
+labl = np.ndarray(shape=raw_labl.shape, dtype=raw_labl.dtype)
 for old, new in enumerate(ordering):
     data[new] = raw_data[old]
-    label[new] = raw_label[old]
+    labl[new] = raw_labl[old]
+del raw, raw_data, raw_labl, ordering
+timer.end("done")
 
 
-def validation():
-    holdout_data = data[-2000:]
-    holdout_label = label[-2000:]
-    training_data = data[:-2000]
-    training_label = label[:-2000]
-    classifier = classify(training_data, training_label, which="lda")
-    score = classifier.score(classifier.classify_all(training_data), training_label)
-    print "training with", len(training_data), "data get prediction rate", score
-    score = classifier.score(classifier.classify_all(holdout_data), holdout_label)
-    print "    and holdout rate", score
-# validation()
+def cross_validation(k=5):
+    timer.start("folding data into", k, "copies")
+    data_slice = [ None ] * k
+    labl_slice = [ None ] * k
+    train_rate = [ 0.0 ] * k
+    valid_rate = [ 0.0 ] * k
+    n = len(labl)
+    m = n / k
+    for i in range(k):
+        data_slice[i] = data[(i*m):min((i+1)*m,n)]
+        labl_slice[i] = labl[(i*m):min((i+1)*m,n)]
+    timer.end("done")
+
+    for j in range(k):
+        timer.start("validation iteration #", j)
+        training_data = np.concatenate(tuple(data_slice[i] for i in range(k) if i != j))
+        training_labl = np.concatenate(tuple(labl_slice[i] for i in range(k) if i != j))
+        print ".... data formating done"
+        c = LDAClassifier(training_data, training_labl)
+        print ".... classifier training done"
+        #train_rate[j] = c.score(c.classify_all(training_data), training_labl)
+        print ".... training accuracy computation done"
+        valid_rate[j] = c.score(c.classify_all(data_slice[j]), labl_slice[j])
+        print ".... validation accuracy computation done"
+        timer.end("done; training accuracy =", train_rate[i], "; validation accuracy =", valid_rate)
+
+    train_accuracy = np.mean(train_rate)
+    valid_accuracy = np.mean(valid_rate)
+    print k, "fold cross validation complete"
+    print ".... overall training accuracy   =", train_accuracy
+    print ".... overall validation accuracy =", valid_accuracy
+
+
+cross_validation()
