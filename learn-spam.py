@@ -43,11 +43,11 @@ def cross_validation(k=5):
         print ".... data formating done"
         c = LDAClassifier(training_data, training_labl)
         print ".... classifier training done"
-        #train_rate[j] = c.score(c.classify_all(training_data), training_labl)
+        train_rate[j] = c.score(c.classify_all(training_data), training_labl)
         print ".... training accuracy computation done"
         valid_rate[j] = c.score(c.classify_all(data_slice[j]), labl_slice[j])
         print ".... validation accuracy computation done"
-        timer.end("done; training accuracy =", train_rate[i], "; validation accuracy =", valid_rate)
+        timer.end("done; training accuracy =", train_rate[j], "; validation accuracy =", valid_rate[j])
 
     train_accuracy = np.mean(train_rate)
     valid_accuracy = np.mean(valid_rate)

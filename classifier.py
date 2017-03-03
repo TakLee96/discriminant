@@ -37,17 +37,22 @@ class GaussianClassifier:
 
 
 class LDAClassifier(GaussianClassifier):
-    def __init__(self, data, label, alpha=1e-3):
+
+    def __init__(self, data, label, alpha=1e-6):
         GaussianClassifier.__init__(self, data, label)
         self.variance = np.sum(self.variances, axis=0) + alpha * np.eye(self.d)
         del self.variances
+        self.precisions = np.ndarray(shape=(self.num_classes, self.d), dtype=self.variance.dtype)
+        for i in range(self.num_classes):
+            self.precisions[i] = la.solve(self.variance, self.means[i])
+        del self.variance
 
     def classify(self, point):
         point = point[self.trim]
         discriminant = np.ndarray(shape=self.num_classes, dtype=np.float)
         for i in range(self.num_classes):
-            discriminant[i] = np.dot(la.solve(self.variance, point - np.divide(self.means[i], 2)),
-                                     self.means[i]) + self.log_priors[i]
+            discriminant[i] = np.dot(point - np.divide(self.means[i], 2),
+                                     self.precisions[i]) + self.log_priors[i]
         return np.argmax(discriminant)
 
 
